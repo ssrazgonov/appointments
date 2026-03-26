@@ -1,0 +1,79 @@
+<?php
+
+use App\Http\Controllers\Api\AppointmentController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SubscriptionController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
+
+// Public routes
+Route::prefix('auth')->group(function () {
+    Route::post('register', [AuthController::class, 'register']);
+    Route::post('login', [AuthController::class, 'login']);
+});
+
+// Robokassa webhooks (public, signature verified in controller)
+Route::prefix('payments')->group(function () {
+    Route::post('robokassa/result', [PaymentController::class, 'robokassaResult']);
+    Route::post('robokassa/success', [PaymentController::class, 'robokassaSuccess']);
+    Route::post('robokassa/fail', [PaymentController::class, 'robokassaFail']);
+});
+
+// Protected routes
+Route::middleware('auth:api')->group(function () {
+    // Auth
+    Route::prefix('auth')->group(function () {
+        Route::post('logout', [AuthController::class, 'logout']);
+        Route::post('refresh', [AuthController::class, 'refresh']);
+        Route::get('me', [AuthController::class, 'me']);
+    });
+
+    // Dashboard
+    Route::get('dashboard', [DashboardController::class, 'index']);
+
+    // Clients
+    Route::apiResource('clients', ClientController::class);
+
+    // Appointments
+    Route::prefix('appointments')->group(function () {
+        Route::get('/', [AppointmentController::class, 'index']);
+        Route::get('/today', [AppointmentController::class, 'today']);
+        Route::get('/upcoming', [AppointmentController::class, 'upcoming']);
+        Route::post('/', [AppointmentController::class, 'store']);
+        Route::get('/{id}', [AppointmentController::class, 'show']);
+        Route::put('/{id}', [AppointmentController::class, 'update']);
+        Route::delete('/{id}', [AppointmentController::class, 'destroy']);
+        Route::post('/{id}/cancel', [AppointmentController::class, 'cancel']);
+        Route::post('/{id}/complete', [AppointmentController::class, 'complete']);
+    });
+
+    // Subscriptions
+    Route::prefix('subscriptions')->group(function () {
+        Route::get('/plans', [SubscriptionController::class, 'plans']);
+        Route::get('/current', [SubscriptionController::class, 'current']);
+        Route::get('/has-active', [SubscriptionController::class, 'hasActive']);
+    });
+
+    // Payments
+    Route::prefix('payments')->group(function () {
+        Route::get('/', [PaymentController::class, 'index']);
+        Route::post('/create', [PaymentController::class, 'create']);
+        Route::get('/{id}', [PaymentController::class, 'show']);
+    });
+
+    // Reports
+    Route::prefix('reports')->group(function () {
+        Route::get('/monthly', [ReportController::class, 'monthly']);
+        Route::get('/yearly', [ReportController::class, 'yearly']);
+        Route::get('/appointments', [ReportController::class, 'appointments']);
+    });
+});
