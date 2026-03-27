@@ -45,6 +45,11 @@ return [
             'driver' => 'jwt',
             'provider' => 'users',
         ],
+
+        'client' => [
+            'driver' => 'jwt',
+            'provider' => 'clients',
+        ],
     ],
 
     /*
@@ -70,10 +75,10 @@ return [
             'model' => env('AUTH_MODEL', App\Models\User::class),
         ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'clients' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\ClientAccount::class,
+        ],
     ],
 
     /*

@@ -10,6 +10,7 @@ export default defineConfig({
                 'resources/js/landing/main.js',
                 'resources/js/dashboard/main.js',
                 'resources/js/booking/main.js',
+                'resources/js/client/main.js',
             ],
             refresh: true,
         }),
@@ -33,13 +34,16 @@ export default defineConfig({
         hmr: {
             host: 'localhost',
         },
+        origin: 'http://localhost:8080',
     },
     build: {
+        manifest: true,
         rollupOptions: {
             input: {
                 landing: 'resources/js/landing/main.js',
                 dashboard: 'resources/js/dashboard/main.js',
                 booking: 'resources/js/booking/main.js',
+                client: 'resources/js/client/main.js',
             },
             output: {
                 entryFileNames: 'assets/[name]-[hash].js',

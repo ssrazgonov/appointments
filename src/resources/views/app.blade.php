@@ -17,6 +17,8 @@
         @vite(['resources/js/dashboard/main.js'])
     @elseif($app === 'booking')
         @vite(['resources/js/booking/main.js'])
+    @elseif($app === 'client')
+        @vite(['resources/js/client/main.js'])
     @endif
 </head>
 <body class="font-sans antialiased">
@@ -26,6 +28,14 @@
         <div id="dashboard-app"></div>
     @elseif($app === 'booking')
         <div id="booking-app"></div>
+    @elseif($app === 'client')
+        <div id="client-app"></div>
+        <script>
+            console.log('Client app loading...');
+            window.addEventListener('DOMContentLoaded', () => {
+                console.log('DOM loaded, app div exists:', !!document.getElementById('client-app'));
+            });
+        </script>
     @endif
 </body>
 </html>

@@ -13,6 +13,7 @@ class Appointment extends Model
     protected $fillable = [
         'user_id',
         'client_id',
+        'client_account_id',
         'service_id',
         'title',
         'description',
@@ -47,6 +48,11 @@ class Appointment extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function clientAccount()
+    {
+        return $this->belongsTo(ClientAccount::class, 'client_account_id');
     }
 
     public function service()

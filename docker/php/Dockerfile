@@ -34,5 +34,8 @@ RUN mkdir -p /home/dev/.composer && \
 # Set permissions
 RUN chmod -R 775 /var/www/html
 
+# Create manifest symlink for Laravel 11
+RUN ln -sf .vite/manifest.json /var/www/html/public/build/manifest.json || true
+
 EXPOSE 9000
 CMD ["php-fpm"]

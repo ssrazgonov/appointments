@@ -18,7 +18,26 @@
               required
               class="input"
               placeholder="Как вас будут видеть клиенты"
+              @input="generateSlug"
             />
+          </div>
+          <div class="form-group">
+            <label>Ссылка для записи *</label>
+            <div class="slug-input">
+              <span class="slug-prefix">/book/</span>
+              <input
+                v-model="form.slug"
+                type="text"
+                required
+                pattern="[a-z0-9-]+"
+                class="input"
+                placeholder="anna-master"
+                maxlength="50"
+              />
+            </div>
+            <p class="form-hint">Только латинские буквы, цифры и дефис</p>
+            <p v-if="slugError" class="error-text">{{ slugError }}</p>
+            <p v-if="slugAvailable" class="success-text">✓ Ссылка доступна</p>
           </div>
           <div class="form-group">
             <label>О себе</label>
@@ -93,6 +112,42 @@
           </button>
         </div>
       </form>
+
+      <!-- Booking Link & QR Code Section -->
+      <div v-if="form.slug" class="qr-section">
+        <h2>Ваша ссылка для записи</h2>
+        <div class="qr-content">
+          <div class="qr-info">
+            <div class="booking-link">
+              <input
+                type="text"
+                readonly
+                :value="bookingUrl"
+                class="input booking-url-input"
+              />
+              <button @click="copyLink" class="btn btn-secondary">
+                {{ linkCopied ? 'Скопировано!' : 'Копировать' }}
+              </button>
+            </div>
+            <p class="qr-description">
+              Отправьте эту ссылку клиентам или разместите в соцсетях
+            </p>
+          </div>
+          <div class="qr-code-container">
+            <qrcode-vue
+              :value="bookingUrl"
+              :size="200"
+              level="H"
+              render-as="svg"
+            />
+            <div class="qr-actions">
+              <button @click="downloadQR" class="btn btn-primary btn-sm">
+                📥 Скачать QR
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Working Hours Section -->
       <div class="working-hours-section">
@@ -213,23 +268,34 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { masterProfileApi } from '@/api/masterProfile';
+import QrcodeVue from 'qrcode.vue';
 
 const loading = ref(true);
 const saving = ref(false);
 const savingService = ref(false);
 const showAddService = ref(false);
 const editingService = ref(null);
+const slugError = ref('');
+const slugAvailable = ref(false);
+const linkCopied = ref(false);
 
 const form = ref({
+  id: null,
   display_name: '',
+  slug: '',
   bio: '',
   phone: '',
   email: '',
   address: '',
   appointment_duration: 60,
   booking_advance_days: 30,
+});
+
+const bookingUrl = computed(() => {
+  if (!form.value.slug) return '';
+  return `${window.location.origin}/book/${form.value.slug}`;
 });
 
 const workingHours = ref([
@@ -285,6 +351,104 @@ async function saveProfile() {
     console.error(err);
   } finally {
     saving.value = false;
+  }
+}
+
+function generateSlug() {
+  if (!form.value.display_name) {
+    form.value.slug = '';
+    return;
+  }
+  
+  // Generate slug from display name
+  const slug = form.value.display_name
+    .toLowerCase()
+    .replace(/[^a-z0-9а-яё\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/ё/g, 'e')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 50);
+  
+  form.value.slug = slug;
+  checkSlugAvailability();
+}
+
+async function checkSlugAvailability() {
+  if (!form.value.slug || form.value.slug.length < 3) {
+    slugError.value = '';
+    slugAvailable.value = false;
+    return;
+  }
+  
+  // Validate slug format
+  if (!/^[a-z0-9-]+$/.test(form.value.slug)) {
+    slugError.value = 'Только латинские буквы, цифры и дефис';
+    slugAvailable.value = false;
+    return;
+  }
+  
+  slugError.value = '';
+  slugAvailable.value = true;
+}
+
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(bookingUrl.value);
+    linkCopied.value = true;
+    setTimeout(() => {
+      linkCopied.value = false;
+    }, 2000);
+  } catch (err) {
+    // Fallback for older browsers
+    const input = document.querySelector('.booking-url-input');
+    input.select();
+    document.execCommand('copy');
+    linkCopied.value = true;
+    setTimeout(() => {
+      linkCopied.value = false;
+    }, 2000);
+  }
+}
+
+async function downloadQR() {
+  try {
+    const svgElement = document.querySelector('.qr-code-container svg');
+    if (!svgElement) return;
+    
+    // Convert SVG to Canvas
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+      
+      // White background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.drawImage(img, 0, 0, 400, 400);
+      URL.revokeObjectURL(url);
+      
+      // Download
+      const pngUrl = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `qr-${form.value.slug}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    };
+    img.src = url;
+  } catch (err) {
+    console.error('Failed to download QR:', err);
+    alert('Не удалось скачать QR-код');
   }
 }
 
@@ -722,6 +886,102 @@ function formatPrice(price) {
   margin-top: 20px;
 }
 
+/* QR Section Styles */
+.qr-section {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-top: 30px;
+}
+
+.qr-section h2 {
+  font-size: 1.25rem;
+  color: #2d3748;
+  margin-bottom: 20px;
+}
+
+.qr-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  align-items: start;
+}
+
+.qr-info {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.booking-link {
+  display: flex;
+  gap: 10px;
+}
+
+.booking-url-input {
+  flex: 1;
+  background: #f7fafc;
+  font-family: monospace;
+}
+
+.qr-description {
+  color: #718096;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.qr-code-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: #f7fafc;
+  border-radius: 12px;
+}
+
+.qr-code-container svg {
+  border-radius: 8px;
+  padding: 10px;
+  background: white;
+}
+
+.qr-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.slug-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slug-prefix {
+  color: #718096;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.form-hint {
+  font-size: 0.875rem;
+  color: #718096;
+  margin-top: 5px;
+}
+
+.error-text {
+  color: #e53e3e;
+  font-size: 0.875rem;
+  margin-top: 5px;
+}
+
+.success-text {
+  color: #10b981;
+  font-size: 0.875rem;
+  margin-top: 5px;
+}
+
 @media (max-width: 768px) {
   .profile-page {
     padding: 20px;
@@ -735,6 +995,26 @@ function formatPrice(price) {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
+  }
+  
+  .qr-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .booking-link {
+    flex-direction: column;
+  }
+  
+  .slug-input {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .slug-prefix {
+    text-align: center;
+    padding: 5px;
+    background: #f7fafc;
+    border-radius: 8px;
   }
 
   .time-inputs {

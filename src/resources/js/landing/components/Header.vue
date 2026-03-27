@@ -14,7 +14,7 @@
 
         <div class="auth-buttons">
           <template v-if="isAuthenticated">
-            <router-link to="/app" class="btn btn-outline">
+            <router-link to="/client" class="btn btn-outline">
               Личный кабинет
             </router-link>
             <button @click="handleLogout" class="btn btn-text">
@@ -22,10 +22,10 @@
             </button>
           </template>
           <template v-else>
-            <router-link to="/app/login" class="btn btn-text">
+            <router-link to="/client/login" class="btn btn-text">
               Войти
             </router-link>
-            <router-link to="/app/register" class="btn btn-primary">
+            <router-link to="/client/register" class="btn btn-primary">
               Начать бесплатно
             </router-link>
           </template>

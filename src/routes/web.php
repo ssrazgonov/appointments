@@ -20,6 +20,11 @@ Route::get('/app{any?}', function () {
     return view('app', ['app' => 'dashboard']);
 })->where('any', '.*');
 
+// Client cabinet app
+Route::get('/client{any?}', function () {
+    return view('app', ['app' => 'client']);
+})->where('any', '.*');
+
 // Public booking pages
 Route::get('/book/{any?}', function () {
     return view('app', ['app' => 'booking']);

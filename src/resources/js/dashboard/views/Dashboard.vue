@@ -2,6 +2,43 @@
   <div class="space-y-6">
     <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
 
+    <!-- Booking Link Widget -->
+    <div v-if="masterProfile?.slug" class="card booking-link-card">
+      <div class="booking-link-content">
+        <div class="booking-link-info">
+          <h3 class="booking-link-title">📱 Ваша ссылка для записи</h3>
+          <div class="booking-link-row">
+            <input
+              type="text"
+              readonly
+              :value="bookingUrl"
+              class="input booking-url-input"
+            />
+            <button @click="copyLink" class="btn btn-secondary">
+              {{ linkCopied ? '✓ Скопировано' : '📋 Копировать' }}
+            </button>
+            <a :href="bookingUrl" target="_blank" class="btn btn-primary">
+              🔗 Открыть
+            </a>
+          </div>
+          <p class="booking-link-hint">
+            Отправьте эту ссылку клиентам или разместите в соцсетях
+          </p>
+        </div>
+        <div class="booking-qr-code">
+          <qrcode-vue
+            :value="bookingUrl"
+            :size="120"
+            level="H"
+            render-as="svg"
+          />
+          <button @click="downloadQR" class="btn btn-sm btn-outline">
+            📥 Скачать QR
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <div class="card">
@@ -139,19 +176,35 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { dashboardApi } from '@/api/dashboard';
-import { subscriptionsApi } from '@/api/subscriptions';
+import { masterProfileApi } from '@/api/masterProfile';
+import QrcodeVue from 'qrcode.vue';
 
 const dashboard = ref({});
 const subscription = ref({});
+const masterProfile = ref(null);
 const loading = ref(true);
+const linkCopied = ref(false);
+
+const bookingUrl = computed(() => {
+  if (!masterProfile.value?.slug) return '';
+  return `${window.location.origin}/book/${masterProfile.value.slug}`;
+});
 
 const fetchDashboard = async () => {
   try {
     const data = await dashboardApi.getDashboard();
     dashboard.value = data.dashboard;
     subscription.value = data.subscription;
+    
+    // Fetch master profile
+    try {
+      const profileData = await masterProfileApi.getProfile();
+      masterProfile.value = profileData.profile;
+    } catch (err) {
+      console.error('Failed to fetch master profile:', err);
+    }
   } catch (error) {
     console.error('Failed to fetch dashboard:', error);
   } finally {
@@ -201,7 +254,144 @@ const getStatusText = (status) => {
   return texts[status] || status;
 };
 
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(bookingUrl.value);
+    linkCopied.value = true;
+    setTimeout(() => {
+      linkCopied.value = false;
+    }, 2000);
+  } catch (err) {
+    const input = document.querySelector('.booking-url-input');
+    input.select();
+    document.execCommand('copy');
+    linkCopied.value = true;
+    setTimeout(() => {
+      linkCopied.value = false;
+    }, 2000);
+  }
+}
+
+async function downloadQR() {
+  try {
+    const svgElement = document.querySelector('.booking-qr-code svg');
+    if (!svgElement) return;
+    
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, 400, 400);
+      URL.revokeObjectURL(url);
+      
+      const pngUrl = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `qr-${masterProfile.value.slug}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    };
+    img.src = url;
+  } catch (err) {
+    console.error('Failed to download QR:', err);
+  }
+}
+
 onMounted(() => {
   fetchDashboard();
 });
 </script>
+
+<style scoped>
+.booking-link-card {
+  border: 2px solid #667eea;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ff 100%);
+}
+
+.booking-link-content {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 30px;
+  align-items: center;
+}
+
+.booking-link-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 15px;
+}
+
+.booking-link-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.booking-url-input {
+  flex: 1;
+  background: white;
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.booking-link-hint {
+  font-size: 0.875rem;
+  color: #718096;
+}
+
+.booking-qr-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.booking-qr-code svg {
+  border-radius: 8px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.btn-outline:hover {
+  background: #667eea;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .booking-link-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .booking-link-row {
+    flex-direction: column;
+  }
+  
+  .booking-qr-code {
+    width: 100%;
+  }
+}
+</style>

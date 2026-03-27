@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Client\AuthController as ClientAuthController;
+use App\Http\Controllers\Api\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\MasterProfileController;
@@ -104,5 +106,24 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/monthly', [ReportController::class, 'monthly']);
         Route::get('/yearly', [ReportController::class, 'yearly']);
         Route::get('/appointments', [ReportController::class, 'appointments']);
+    });
+});
+
+// Client Cabinet API (JWT authenticated)
+Route::prefix('client')->group(function () {
+    // Public auth routes
+    Route::post('register', [ClientAuthController::class, 'register']);
+    Route::post('login', [ClientAuthController::class, 'login']);
+    Route::post('send-verification-code', [ClientAuthController::class, 'sendVerificationCode']);
+
+    // Protected routes
+    Route::middleware('auth:client')->group(function () {
+        Route::get('me', [ClientAuthController::class, 'me']);
+        Route::post('logout', [ClientAuthController::class, 'logout']);
+
+        // Dashboard
+        Route::get('dashboard', [ClientDashboardController::class, 'index']);
+        Route::get('masters', [ClientDashboardController::class, 'masters']);
+        Route::get('appointments', [ClientDashboardController::class, 'appointmentHistory']);
     });
 });
