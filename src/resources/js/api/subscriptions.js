@@ -1,6 +1,6 @@
-import api from './index';
+import api from '.';
 
-export const subscriptionService = {
+export const subscriptionsApi = {
     async getPlans() {
         const response = await api.get('/subscriptions/plans');
         return response.data.plans;

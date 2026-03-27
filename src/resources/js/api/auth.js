@@ -1,6 +1,6 @@
-import api from './index';
+import api from '.';
 
-export const authService = {
+export const authApi = {
     async register(userData) {
         const response = await api.post('/auth/register', userData);
         if (response.data.token) {

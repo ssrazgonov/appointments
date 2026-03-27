@@ -4,7 +4,9 @@ use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\MasterProfileController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\Public\BookingController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SubscriptionController;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +21,14 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
+});
+
+// Public Booking API
+Route::prefix('public')->group(function () {
+    Route::get('master/{slug}', [BookingController::class, 'getMasterBySlug']);
+    Route::get('services/{userId}', [BookingController::class, 'getServices']);
+    Route::get('available-slots', [BookingController::class, 'getAvailableSlots']);
+    Route::post('book', [BookingController::class, 'createBooking']);
 });
 
 // Robokassa webhooks (public, signature verified in controller)
@@ -39,6 +49,25 @@ Route::middleware('auth:api')->group(function () {
 
     // Dashboard
     Route::get('dashboard', [DashboardController::class, 'index']);
+
+    // Master Profile
+    Route::prefix('master-profile')->group(function () {
+        Route::get('/', [MasterProfileController::class, 'show']);
+        Route::post('/', [MasterProfileController::class, 'store']);
+        Route::put('/', [MasterProfileController::class, 'update']);
+        
+        Route::prefix('working-hours')->group(function () {
+            Route::get('/', [MasterProfileController::class, 'getWorkingHours']);
+            Route::put('/', [MasterProfileController::class, 'updateWorkingHours']);
+        });
+        
+        Route::prefix('services')->group(function () {
+            Route::get('/', [MasterProfileController::class, 'getServices']);
+            Route::post('/', [MasterProfileController::class, 'storeService']);
+            Route::put('/{id}', [MasterProfileController::class, 'updateService']);
+            Route::delete('/{id}', [MasterProfileController::class, 'deleteService']);
+        });
+    });
 
     // Clients
     Route::apiResource('clients', ClientController::class);

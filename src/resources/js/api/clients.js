@@ -1,6 +1,6 @@
-import api from './index';
+import api from '.';
 
-export const clientService = {
+export const clientsApi = {
     async getClients(params = {}) {
         const response = await api.get('/clients', { params });
         return response.data;

@@ -1,6 +1,6 @@
-import api from './index';
+import api from '.';
 
-export const dashboardService = {
+export const dashboardApi = {
     async getDashboard() {
         const response = await api.get('/dashboard');
         return response.data;

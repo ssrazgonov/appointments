@@ -1,6 +1,6 @@
-import api from './index';
+import api from '.';
 
-export const paymentService = {
+export const paymentsApi = {
     async getPayments(params = {}) {
         const response = await api.get('/payments', { params });
         return response.data;

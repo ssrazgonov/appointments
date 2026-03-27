@@ -13,6 +13,7 @@ class Appointment extends Model
     protected $fillable = [
         'user_id',
         'client_id',
+        'service_id',
         'title',
         'description',
         'start_time',
@@ -22,6 +23,9 @@ class Appointment extends Model
         'is_paid',
         'notes',
         'reminder_sent',
+        'client_name',
+        'client_phone',
+        'client_email',
     ];
 
     protected function casts(): array
@@ -43,6 +47,11 @@ class Appointment extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
     }
 
     public function scopeScheduled($query)

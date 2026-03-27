@@ -5,7 +5,12 @@ import vue from '@vitejs/plugin-vue';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            input: [
+                'resources/css/app.css',
+                'resources/js/landing/main.js',
+                'resources/js/dashboard/main.js',
+                'resources/js/booking/main.js',
+            ],
             refresh: true,
         }),
         vue({
@@ -27,6 +32,20 @@ export default defineConfig({
         port: 5173,
         hmr: {
             host: 'localhost',
+        },
+    },
+    build: {
+        rollupOptions: {
+            input: {
+                landing: 'resources/js/landing/main.js',
+                dashboard: 'resources/js/dashboard/main.js',
+                booking: 'resources/js/booking/main.js',
+            },
+            output: {
+                entryFileNames: 'assets/[name]-[hash].js',
+                chunkFileNames: 'assets/[name]-[hash].js',
+                assetFileNames: 'assets/[name]-[hash].[ext]',
+            },
         },
     },
 });

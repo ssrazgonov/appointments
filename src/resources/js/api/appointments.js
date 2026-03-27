@@ -1,6 +1,6 @@
-import api from './index';
+import api from '.';
 
-export const appointmentService = {
+export const appointmentsApi = {
     async getAppointments(params = {}) {
         const response = await api.get('/appointments', { params });
         return response.data;

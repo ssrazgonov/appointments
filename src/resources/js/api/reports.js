@@ -1,6 +1,6 @@
-import api from './index';
+import api from '.';
 
-export const reportService = {
+export const reportsApi = {
     async getMonthlyReport(year, month) {
         const response = await api.get('/reports/monthly', { params: { year, month } });
         return response.data;

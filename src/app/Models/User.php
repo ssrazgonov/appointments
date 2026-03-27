@@ -84,4 +84,24 @@ class User extends Authenticatable implements JWTSubject
         $subscription = $this->subscription;
         return $subscription && $subscription->isActive();
     }
+
+    public function masterProfile()
+    {
+        return $this->hasOne(MasterProfile::class);
+    }
+
+    public function services()
+    {
+        return $this->hasMany(Service::class);
+    }
+
+    public function workingHours()
+    {
+        return $this->hasMany(WorkingHour::class);
+    }
+
+    public function activeServices()
+    {
+        return $this->hasMany(Service::class)->where('is_active', true)->orderBy('sort_order');
+    }
 }
