@@ -19,7 +19,10 @@
             <div>
               <p class="font-medium text-gray-900">{{ appointment.title }}</p>
               <p class="text-sm text-gray-500">
-                {{ appointment.client?.full_name || appointment.client?.first_name || '—' }}
+                {{ appointment.client_name || appointment.client?.full_name || appointment.client?.first_name || 'Клиент не указан' }}
+              </p>
+              <p v-if="appointment.client_phone" class="text-xs text-gray-400">
+                📞 {{ appointment.client_phone }}
               </p>
             </div>
           </div>

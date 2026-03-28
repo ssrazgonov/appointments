@@ -103,18 +103,54 @@ class AuthController extends Controller
         $client = ClientAccount::where('phone', $request->phone)->first();
 
         if (!$client) {
+            // Create new client account for phone
+            $client = ClientAccount::create([
+                'phone' => $request->phone,
+                'is_verified' => false,
+            ]);
+        }
+
+        $code = $client->generateVerificationCode();
+
+        // TODO: Send SMS here
+        // For testing, return code in response
+        return response()->json([
+            'message' => 'Verification code sent',
+            'code' => $code, // Remove in production!
+        ]);
+    }
+
+    public function verifyCode(Request $request): JsonResponse
+    {
+        $request->validate([
+            'phone' => 'required|string|max:20',
+            'code' => 'required|string|size:6',
+        ]);
+
+        $client = ClientAccount::where('phone', $request->phone)->first();
+
+        if (!$client) {
             return response()->json([
                 'message' => 'Account not found',
             ], 404);
         }
 
-        $code = $client->generateVerificationCode();
+        if (!$client->verifyCode($request->code)) {
+            return response()->json([
+                'message' => 'Invalid or expired code',
+            ], 422);
+        }
 
-        // Here you would send SMS
-        // For now, just return it for testing
+        // Mark as verified
+        $client->update(['is_verified' => true]);
+
+        // Generate JWT token
+        $token = JWTAuth::fromUser($client);
+
         return response()->json([
-            'message' => 'Verification code sent',
-            'code' => $code, // Remove in production
+            'message' => 'Verified successfully',
+            'client' => $client,
+            'token' => $token,
         ]);
     }
 

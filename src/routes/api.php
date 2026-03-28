@@ -115,6 +115,7 @@ Route::prefix('client')->group(function () {
     Route::post('register', [ClientAuthController::class, 'register']);
     Route::post('login', [ClientAuthController::class, 'login']);
     Route::post('send-verification-code', [ClientAuthController::class, 'sendVerificationCode']);
+    Route::post('verify-code', [ClientAuthController::class, 'verifyCode']);
 
     // Protected routes
     Route::middleware('auth:client')->group(function () {

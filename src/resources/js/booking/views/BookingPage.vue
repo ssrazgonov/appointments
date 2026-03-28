@@ -27,8 +27,18 @@
 
       <!-- Booking Form -->
       <div v-else-if="master && services.length" class="booking-form">
+        <!-- Welcome Message for Logged In Users -->
+        <div v-if="isLoggedIn" class="welcome-banner">
+          <span class="welcome-icon">✓</span>
+          <div class="welcome-text">
+            <strong>Вы вошли как {{ clientName }}</strong>
+            <p>Запись будет создана на ваш аккаунт</p>
+          </div>
+          <button @click="handleLogout" class="btn btn-sm btn-outline">Выйти</button>
+        </div>
+
         <!-- Step 1: Select Service -->
-        <section class="form-section" :class="{ active: step === 1 }">
+        <section v-show="step >= 1" class="form-section" :class="{ active: step === 1 }">
           <h2>Выберите услугу</h2>
           <div class="services-list">
             <div
@@ -58,7 +68,7 @@
         </section>
 
         <!-- Step 2: Select Date -->
-        <section v-if="step >= 2" class="form-section" :class="{ active: step === 2 }">
+        <section v-show="step >= 2" class="form-section" :class="{ active: step === 2 }">
           <h2>Выберите дату</h2>
           <div class="date-picker">
             <div
@@ -86,7 +96,7 @@
         </section>
 
         <!-- Step 3: Select Time -->
-        <section v-if="step >= 3" class="form-section" :class="{ active: step === 3 }">
+        <section v-show="step >= 3" class="form-section" :class="{ active: step === 3 }">
           <h2>Выберите время</h2>
           <div v-if="loadingSlots" class="loading">
             <div class="spinner"></div>
@@ -107,28 +117,21 @@
             <button @click="step = 2" class="btn btn-secondary">Назад</button>
             <button
               v-if="selectedSlot"
-              @click="step = 4"
+              @click="isLoggedIn ? submitBooking() : (step = 4)"
               class="btn btn-primary"
             >
-              Продолжить
+              {{ isLoggedIn ? 'Записаться' : 'Продолжить' }}
             </button>
           </div>
         </section>
 
-        <!-- Step 4: Client Info -->
-        <section v-if="step >= 4" class="form-section" :class="{ active: step === 4 }">
-          <h2>Ваши данные</h2>
-          <form @submit.prevent="submitBooking" class="client-form">
-            <div class="form-group">
-              <label>Имя *</label>
-              <input
-                v-model="formData.client_name"
-                type="text"
-                required
-                class="input"
-                placeholder="Ваше имя"
-              />
-            </div>
+        <!-- Step 4: Phone Input (for new users) -->
+        <section v-show="step >= 4 && !isLoggedIn" class="form-section" :class="{ active: step === 4 }">
+          <h2>Ваш телефон</h2>
+          <p class="section-description">
+            Мы создадим аккаунт автоматически. На телефон придёт код подтверждения.
+          </p>
+          <form @submit.prevent="sendVerificationCode" class="phone-form">
             <div class="form-group">
               <label>Телефон *</label>
               <input
@@ -139,28 +142,54 @@
                 placeholder="+7 (___) ___-__-__"
               />
             </div>
+            <div class="form-actions">
+              <button type="button" @click="step = 3" class="btn btn-secondary">Назад</button>
+              <button type="submit" :disabled="sendingCode" class="btn btn-primary">
+                {{ sendingCode ? 'Отправка...' : 'Получить код' }}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Step 5: Verification Code (for new users) -->
+        <section v-show="step >= 5 && !isLoggedIn" class="form-section" :class="{ active: step === 5 }">
+          <h2>Код подтверждения</h2>
+          <p class="section-description">
+            Введите код из SMS сообщения
+          </p>
+          <form @submit.prevent="verifyCode" class="code-form">
             <div class="form-group">
-              <label>Email</label>
+              <label>Код *</label>
               <input
-                v-model="formData.client_email"
-                type="email"
+                v-model="verificationCode"
+                type="text"
+                maxlength="6"
+                required
                 class="input"
-                placeholder="email@example.com"
+                placeholder="000000"
               />
             </div>
-            <div class="form-group">
-              <label>Комментарий</label>
-              <textarea
-                v-model="formData.notes"
-                class="input"
-                rows="3"
-                placeholder="Пожелания к записи"
-              ></textarea>
+            <div v-if="codeError" class="error-message">{{ codeError }}</div>
+            <div class="form-actions">
+              <button type="button" @click="step = 4" class="btn btn-secondary">Назад</button>
+              <button type="submit" :disabled="verifying" class="btn btn-primary">
+                {{ verifying ? 'Проверка...' : 'Подтвердить' }}
+              </button>
             </div>
+          </form>
+        </section>
 
+        <!-- Step 6: Final Confirmation -->
+        <section v-show="step >= 6" class="form-section" :class="{ active: step === 6 }">
+          <h2>Подтверждение записи</h2>
+          <form @submit.prevent="submitBooking" class="confirmation-form">
             <!-- Booking Summary -->
             <div class="booking-summary">
               <h3>Детали записи</h3>
+              <div class="summary-row">
+                <span>Мастер:</span>
+                <strong>{{ master.display_name }}</strong>
+              </div>
               <div class="summary-row">
                 <span>Услуга:</span>
                 <strong>{{ selectedService?.name }}</strong>
@@ -179,10 +208,20 @@
               </div>
             </div>
 
+            <div class="form-group" v-if="!isLoggedIn">
+              <label>Ваше имя</label>
+              <input
+                v-model="formData.client_name"
+                type="text"
+                class="input"
+                placeholder="Как к вам обращаться"
+              />
+            </div>
+
             <div class="form-actions">
-              <button type="button" @click="step = 3" class="btn btn-secondary">Назад</button>
+              <button type="button" @click="step = isLoggedIn ? 3 : 5" class="btn btn-secondary">Назад</button>
               <button type="submit" :disabled="submitting" class="btn btn-primary">
-                {{ submitting ? 'Запись...' : 'Записаться' }}
+                {{ submitting ? 'Запись...' : 'Подтвердить запись' }}
               </button>
             </div>
           </form>
@@ -200,6 +239,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { bookingApi } from '@/api/booking';
+import { clientAuthApi } from '@/api/clientAuth';
 
 const route = useRoute();
 const router = useRouter();
@@ -210,12 +250,21 @@ const loading = ref(true);
 const error = ref(null);
 const loadingSlots = ref(false);
 const submitting = ref(false);
+const sendingCode = ref(false);
+const verifying = ref(false);
 
 const step = ref(1);
 const selectedService = ref(null);
 const selectedDate = ref(null);
 const selectedSlot = ref(null);
 const timeSlots = ref([]);
+const verificationCode = ref('');
+const codeError = ref('');
+const clientToken = ref(null);
+
+// Auth state
+const isLoggedIn = ref(false);
+const clientName = ref('');
 
 const formData = ref({
   client_name: '',
@@ -233,8 +282,14 @@ const availableDates = computed(() => {
   for (let i = 0; i < 14; i++) {
     const date = new Date(today);
     date.setDate(date.getDate() + i);
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+    
     dates.push({
-      date: date.toISOString().split('T')[0],
+      date: dateString,
       dayName: dayNames[date.getDay()],
       dayNumber: date.getDate(),
       monthName: monthNames[date.getMonth()],
@@ -245,8 +300,22 @@ const availableDates = computed(() => {
 });
 
 onMounted(() => {
+  checkAuth();
   loadMaster();
 });
+
+function checkAuth() {
+  const token = clientAuthApi.getToken();
+  const user = clientAuthApi.getUser();
+  
+  if (token && user) {
+    isLoggedIn.value = true;
+    clientName.value = user.name || user.phone;
+    formData.value.client_phone = user.phone;
+    formData.value.client_name = user.name || '';
+    formData.value.client_email = user.email || '';
+  }
+}
 
 async function loadMaster() {
   loading.value = true;
@@ -297,6 +366,61 @@ function selectSlot(slot) {
   selectedSlot.value = slot;
 }
 
+async function sendVerificationCode() {
+  if (!formData.value.client_phone) {
+    codeError.value = 'Введите номер телефона';
+    return;
+  }
+
+  sendingCode.value = true;
+  codeError.value = '';
+
+  try {
+    const response = await clientAuthApi.sendVerificationCode(formData.value.client_phone);
+    
+    // For testing - show the code
+    if (response.code) {
+      alert(`Код подтверждения: ${response.code}`);
+    }
+    
+    step.value = 5;
+  } catch (err) {
+    codeError.value = err.response?.data?.message || 'Ошибка отправки кода';
+  } finally {
+    sendingCode.value = false;
+  }
+}
+
+async function verifyCode() {
+  if (!verificationCode.value) {
+    codeError.value = 'Введите код';
+    return;
+  }
+
+  verifying.value = true;
+  codeError.value = '';
+
+  try {
+    const response = await clientAuthApi.verifyCode(formData.value.client_phone, verificationCode.value);
+    
+    // Login and get token
+    clientToken.value = response.token;
+    isLoggedIn.value = true;
+    clientName.value = response.client?.name || response.client?.phone;
+    
+    if (response.client) {
+      formData.value.client_name = response.client.name || '';
+      formData.value.client_email = response.client.email || '';
+    }
+    
+    step.value = 6;
+  } catch (err) {
+    codeError.value = err.response?.data?.message || 'Неверный код';
+  } finally {
+    verifying.value = false;
+  }
+}
+
 async function submitBooking() {
   submitting.value = true;
 
@@ -304,24 +428,77 @@ async function submitBooking() {
     const startTime = new Date(`${selectedDate.value}T${selectedSlot.value.start}`);
     const endTime = new Date(`${selectedDate.value}T${selectedSlot.value.end}`);
 
-    await bookingApi.createBooking({
+    const bookingData = {
       user_id: master.value.user_id,
       service_id: selectedService.value?.id,
       start_time: startTime.toISOString(),
       end_time: endTime.toISOString(),
-      client_name: formData.value.client_name,
+      client_name: formData.value.client_name || 'Клиент',
       client_phone: formData.value.client_phone,
       client_email: formData.value.client_email,
       notes: formData.value.notes,
-    });
+    };
 
-    router.push(`/book/${route.params.slug}/success`);
+    // If logged in, use token
+    if (isLoggedIn.value && clientToken.value) {
+      bookingData.client_token = clientToken.value;
+    }
+
+    const response = await bookingApi.createBooking(bookingData);
+
+    // Redirect to success page or client cabinet
+    if (isLoggedIn.value) {
+      // Force reload to load client cabinet app
+      window.location.href = '/client/appointments?booking=success';
+    } else {
+      // Auto-login and redirect - save token AND user info
+      if (response.client_token) {
+        localStorage.setItem('client_token', response.client_token);
+        // Save user info from response or from form
+        const userInfo = response.appointment ? {
+          name: response.appointment.client_name,
+          phone: response.appointment.client_phone,
+          email: response.appointment.client_email,
+        } : {
+          name: formData.value.client_name,
+          phone: formData.value.client_phone,
+          email: formData.value.client_email,
+        };
+        localStorage.setItem('client_user', JSON.stringify(userInfo));
+      }
+      // Force reload to load client cabinet app
+      window.location.href = '/client/appointments?booking=success';
+    }
   } catch (err) {
     alert('Ошибка при создании записи. Попробуйте снова.');
     console.error(err);
   } finally {
     submitting.value = false;
   }
+}
+
+async function handleLogout() {
+  // Clear local storage
+  localStorage.removeItem('client_token');
+  localStorage.removeItem('client_user');
+  
+  // Call API logout
+  try {
+    await clientAuthApi.logout();
+  } catch (err) {
+    console.error('Logout error:', err);
+  }
+  
+  // Reset state
+  isLoggedIn.value = false;
+  clientName.value = '';
+  clientToken.value = null;
+  formData.value.client_name = '';
+  formData.value.client_phone = '';
+  formData.value.client_email = '';
+  
+  // Reload page
+  window.location.reload();
 }
 
 function formatPrice(price) {
@@ -345,12 +522,16 @@ function formatDate(dateString) {
 <style scoped>
 .booking-page {
   min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 40px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .booking-container {
   max-width: 600px;
-  margin: 0 auto;
+  width: 100%;
   background: white;
   border-radius: 16px;
   padding: 40px;
@@ -428,12 +609,18 @@ function formatDate(dateString) {
   color: #e53e3e;
 }
 
-.form-section {
-  display: none;
+.booking-form {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
 }
 
-.form-section.active {
+.form-section {
   display: block;
+}
+
+.form-section:not(.active) {
+  display: none;
 }
 
 .form-section h2 {
@@ -570,16 +757,11 @@ function formatDate(dateString) {
   padding: 40px 20px;
 }
 
-.client-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-bottom: 20px;
 }
 
 .form-group label {
@@ -675,8 +857,80 @@ function formatDate(dateString) {
 
 .no-services {
   text-align: center;
-  padding: 60px 20px;
   color: #718096;
+  padding: 60px 20px;
+}
+
+/* New styles for auth flow */
+.welcome-banner {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+
+.welcome-icon {
+  font-size: 2rem;
+}
+
+.welcome-text {
+  flex: 1;
+}
+
+.welcome-text strong {
+  display: block;
+  color: #22543d;
+  font-size: 1.125rem;
+  margin-bottom: 5px;
+}
+
+.welcome-text p {
+  color: #2f855a;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.section-description {
+  color: #718096;
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.phone-form,
+.code-form,
+.confirmation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.error-message {
+  color: #e53e3e;
+  background: #fff5f5;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  border-left: 4px solid #e53e3e;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 0.875rem;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #2f855a;
+  border: 2px solid #2f855a;
+}
+
+.btn-outline:hover {
+  background: #2f855a;
+  color: white;
 }
 
 @media (max-width: 640px) {
@@ -690,6 +944,11 @@ function formatDate(dateString) {
 
   .time-slots {
     grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .master-header {
+    flex-direction: column;
+    text-align: center;
   }
 }
 </style>

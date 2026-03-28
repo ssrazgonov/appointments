@@ -8,10 +8,11 @@ const api = axios.create({
     },
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token (supports both master and client tokens)
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token');
+        // Try client token first, then master token
+        const token = localStorage.getItem('client_token') || localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -27,10 +28,21 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            if (window.location.pathname.startsWith('/app')) {
-                window.location.href = '/app/login';
+            // Check if it's a client request
+            const isClientRequest = window.location.pathname.startsWith('/client');
+            
+            if (isClientRequest) {
+                localStorage.removeItem('client_token');
+                localStorage.removeItem('client_user');
+                if (!window.location.pathname.includes('/client/login')) {
+                    window.location.href = '/client/login';
+                }
+            } else {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                if (window.location.pathname.startsWith('/app')) {
+                    window.location.href = '/app/login';
+                }
             }
         }
         return Promise.reject(error);

@@ -2,6 +2,16 @@
   <div class="appointments-page">
     <h1 class="page-title">История записей</h1>
 
+    <!-- Success Message -->
+    <div v-if="showSuccessMessage" class="success-banner">
+      <span class="success-icon">✓</span>
+      <div class="success-text">
+        <strong>Запись создана!</strong>
+        <p>Вы успешно записались. Подробности в списке ниже.</p>
+      </div>
+      <button @click="closeSuccessMessage" class="btn-close">×</button>
+    </div>
+
     <div class="filters">
       <button
         v-for="filter in filters"
@@ -79,8 +89,10 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { clientDashboardApi } from '../api/dashboard';
 
+const route = useRoute();
 const filters = [
   { value: 'all', label: 'Все' },
   { value: 'scheduled', label: 'Запланированные' },
@@ -94,6 +106,7 @@ const loadingMore = ref(false);
 const appointments = ref([]);
 const currentPage = ref(1);
 const hasMore = ref(false);
+const showSuccessMessage = ref(false);
 
 const loadAppointments = async (page = 1, append = false) => {
   if (page === 1) {
@@ -135,8 +148,19 @@ watch(currentFilter, () => {
 });
 
 onMounted(() => {
+  // Check for success message from booking
+  if (route.query.booking === 'success') {
+    showSuccessMessage.value = true;
+    // Remove query parameter
+    route.query.booking = undefined;
+  }
+  
   loadAppointments();
 });
+
+function closeSuccessMessage() {
+  showSuccessMessage.value = false;
+}
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -388,5 +412,58 @@ const getFilterLabel = (value) => {
 .empty-state p {
   color: #718096;
   margin-bottom: 30px;
+}
+
+/* Success Banner Styles */
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
+  border-radius: 12px;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.success-icon {
+  font-size: 2rem;
+  color: #22543d;
+}
+
+.success-text {
+  flex: 1;
+}
+
+.success-text strong {
+  display: block;
+  color: #22543d;
+  font-size: 1.125rem;
+  margin-bottom: 5px;
+}
+
+.success-text p {
+  color: #2f855a;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: #2f855a;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s;
+}
+
+.btn-close:hover {
+  color: #22543d;
 }
 </style>

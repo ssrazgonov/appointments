@@ -89,14 +89,20 @@ class DashboardController extends Controller
         $client = auth()->user();
         $status = $request->get('status', 'all');
 
-        $query = Appointment::where('client_account_id', $client->id)
-            ->with(['user.masterProfile', 'service']);
+        // Search by client_account_id OR by phone/email
+        $query = Appointment::where(function ($q) use ($client) {
+                $q->where('client_account_id', $client->id)
+                  ->orWhere('client_phone', $client->phone)
+                  ->orWhere('client_email', $client->email);
+            })
+            ->with(['user.masterProfile', 'service'])
+            ->orderByDesc('start_time');
 
         if ($status !== 'all') {
             $query->where('status', $status);
         }
 
-        $appointments = $query->orderByDesc('start_time')->paginate(20);
+        $appointments = $query->paginate(20);
 
         return response()->json($appointments);
     }

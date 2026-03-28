@@ -91,10 +91,10 @@ class MasterProfileController extends Controller
             'working_hours' => 'required|array',
             'working_hours.*.day_of_week' => 'required|integer|between:0,6',
             'working_hours.*.is_working_day' => 'boolean',
-            'working_hours.*.start_time' => 'nullable|date_format:H:i',
-            'working_hours.*.end_time' => 'nullable|date_format:H:i',
-            'working_hours.*.break_start' => 'nullable|date_format:H:i',
-            'working_hours.*.break_end' => 'nullable|date_format:H:i',
+            'working_hours.*.start_time' => 'nullable|date_format:H:i:s',
+            'working_hours.*.end_time' => 'nullable|date_format:H:i:s',
+            'working_hours.*.break_start' => 'nullable|date_format:H:i:s',
+            'working_hours.*.break_end' => 'nullable|date_format:H:i:s',
         ]);
 
         $userId = auth()->id();

@@ -15,10 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.api' => \Tymon\JWTAuth\Http\Middleware\Authenticate::class,
             'subscription.active' => \App\Http\Middleware\CheckActiveSubscription::class,
+            'json.pretty' => \App\Http\Middleware\SetJsonEncodingOptions::class,
         ]);
 
         $middleware->api(prepend: [
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\SetJsonEncodingOptions::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
