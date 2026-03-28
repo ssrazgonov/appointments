@@ -12,7 +12,7 @@
         :key="master.id"
         class="master-card"
       >
-        <router-link :to="`/client/masters/${master.id}`" class="master-link">
+        <router-link :to="`/masters/${master.id}`" class="master-link">
           <div class="master-avatar-section">
             <img
               v-if="master.avatar_url"

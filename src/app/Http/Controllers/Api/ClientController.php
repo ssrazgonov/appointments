@@ -8,6 +8,7 @@ use App\Http\Requests\Client\UpdateClientRequest;
 use App\Services\ClientService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ClientController extends Controller
 {
@@ -19,13 +20,44 @@ class ClientController extends Controller
     {
         $userId = auth()->id();
         $query = $request->get('q', '');
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->get('per_page', 50);
 
+        // Get unique clients from appointments
+        $clientsQuery = \DB::table('appointments')
+            ->where('user_id', $userId)
+            ->whereNotNull('client_name')
+            ->select([
+                'client_name as name',
+                'client_phone as phone',
+                'client_email as email',
+                \DB::raw('COUNT(*) as total_appointments'),
+                \DB::raw('MAX(created_at) as last_appointment'),
+            ])
+            ->groupBy('client_name', 'client_phone', 'client_email')
+            ->orderByDesc('last_appointment');
+
+        // Search filter
         if ($query) {
-            $clients = $this->clientService->searchClients($userId, $query, $perPage);
-        } else {
-            $clients = $this->clientService->getClients($userId, $perPage);
+            $clientsQuery->where(function($q) use ($query) {
+                $q->where('client_name', 'like', "%{$query}%")
+                  ->orWhere('client_phone', 'like', "%{$query}%")
+                  ->orWhere('client_email', 'like', "%{$query}%");
+            });
         }
+
+        $clients = $clientsQuery->paginate($perPage);
+
+        // Format for frontend
+        $clients->getCollection()->transform(function($client) {
+            return [
+                'id' => null,
+                'name' => $client->name,
+                'phone' => $client->phone,
+                'email' => $client->email,
+                'total_appointments' => $client->total_appointments,
+                'last_appointment' => $client->last_appointment,
+            ];
+        });
 
         return response()->json($clients);
     }
